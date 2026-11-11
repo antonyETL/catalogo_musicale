@@ -1,16 +1,30 @@
 import 'package:flutter/material.dart';
 
+import 'data/repo.dart';
+import 'ui/home/home_page.dart';
+
+/// Punto di ingresso: 1) preparo le dipendenze, 2) avvio l'interfaccia.
 void main() {
-  runApp(const MainApp());
+  Repo.init();
+  runApp(const CatalogoApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+/// CatalogoApp è SENZA stato: la sua unica responsabilità è configurare
+/// MaterialApp (tema, titolo, prima schermata).
+class CatalogoApp extends StatelessWidget {
+  const CatalogoApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(body: Center(child: Text('Hello World!'))),
+    return MaterialApp(
+      title: 'Catalogo Musicale',
+      debugShowCheckedModeBanner: false,
+      // Material 3 è il default nelle versioni recenti di Flutter.
+      // ColorScheme.fromSeed genera una palette coerente da un solo colore.
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+      ),
+      home: const HomePage(),
     );
   }
 }
