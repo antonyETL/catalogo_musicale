@@ -72,5 +72,5 @@ Mostra e filtra gli album e consente di aggiungerli, modificarli o eliminarli.
 ## 24. File lib/ui/home/home_page.dart
 Lo stato condiviso (liste di artisti e album) sta qui, nel primo antenato comune delle due pagine. Le pagine figlie ricevono i dati e una callback per chiedere il ricaricamento. Così, quando elimino un artista, la lista album mostra subito il nome aggiornato: una sola fonte di verità.
 
-## 12. File lib/main.dart
+## 25. File lib/main.dart
 Configura e avvia l'applicazione Flutter.
