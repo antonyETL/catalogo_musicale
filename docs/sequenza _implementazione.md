@@ -74,3 +74,23 @@ Lo stato condiviso (liste di artisti e album) sta qui, nel primo antenato comune
 
 ## 25. File lib/main.dart
 Configura e avvia l'applicazione Flutter.
+
+## 26. File lib/ui/theme/colori_catalogo.dart
+
+## 27. File lib/ui/theme/app_theme.dart
+
+## 28. File lib/ui/theme/tema_controller.dart
+
+## 29. File lib/main.dart (aggiornato)
+
+## 30. File lib/ui/home/home_page.dart (aggiornato)
+
+## 31. File lib/ui/shared/durata_bar.dart
+
+## 32. File lib/ui/tracce/traccia_form_sheet.dart
+
+## 33. File lib/ui/album/album_dettaglio_page.dart
+
+## 34. File lib/ui/album/album_card.dart (aggiornato)
+
+## 35. File lib/ui/album/album_page.dart (Aggiornato)

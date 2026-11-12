@@ -1,3 +1,4 @@
+import 'package:catalogo_musicale_http/ui/theme/tema_controller.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/repo.dart';
@@ -75,9 +76,18 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Catalogo Musicale'),
+        // --- actions dell'AppBar (HomePage) ---
         actions: [
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: modalitaTema,
+            builder: (_, modo, __) => IconButton(
+              tooltip: etichettaTema(modo),
+              icon: Icon(iconaTema(modo)),
+              onPressed: cambiaTema,
+            ),
+          ),
           IconButton(
-            tooltip: 'Ricarica', // tooltip = etichetta per screen reader
+            tooltip: 'Ricarica',
             icon: const Icon(Icons.refresh),
             onPressed: _caricaTutto,
           ),
@@ -85,12 +95,20 @@ class _HomePageState extends State<HomePage> {
       ),
       body: _corpo(),
       // Navigazione volutamente semplice: si può sostituire con go_router.
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _tabCorrente,
-        onTap: (indice) => setState(() => _tabCorrente = indice),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Artisti'),
-          BottomNavigationBarItem(icon: Icon(Icons.album), label: 'Album'),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tabCorrente,
+        onDestinationSelected: (i) => setState(() => _tabCorrente = i),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Artisti',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.album_outlined),
+            selectedIcon: Icon(Icons.album),
+            label: 'Album',
+          ),
         ],
       ),
     );

@@ -1,3 +1,4 @@
+import 'package:catalogo_musicale_http/ui/album/album_dettaglio_page.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/repo.dart';
@@ -174,7 +175,15 @@ class _AlbumPageState extends State<AlbumPage> {
                         return AlbumCard(
                           album: a,
                           nomeArtista: _nomeArtista(a.idArtista),
-                          onTap: () => _apriForm(album: a),
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    AlbumDettaglioPage(idAlbum: a.id!),
+                              ),
+                            );
+                            await widget.onDatiCambiati(); // tornando indietro, la lista è aggiornata
+                          },
                           onModifica: () => _apriForm(album: a),
                           onElimina: () => _elimina(a),
                         );
