@@ -76,21 +76,73 @@ Lo stato condiviso (liste di artisti e album) sta qui, nel primo antenato comune
 Configura e avvia l'applicazione Flutter.
 
 ## 26. File lib/ui/theme/colori_catalogo.dart
+Definisce i colori aggiuntivi usati nei temi chiaro e scuro.
 
 ## 27. File lib/ui/theme/app_theme.dart
+Configura gli stili e i componenti visivi dei temi chiaro e scuro.
 
 ## 28. File lib/ui/theme/tema_controller.dart
+Gestisce la modalità del tema e il passaggio tra chiaro, scuro e sistema.
 
 ## 29. File lib/main.dart (aggiornato)
+Imposta i temi dell'app e collega la modalità scelta dall'utente all'interfaccia.
 
 ## 30. File lib/ui/home/home_page.dart (aggiornato)
+Mantiene i dati condivisi del catalogo e aggiunge il controllo per cambiare tema.
 
 ## 31. File lib/ui/shared/durata_bar.dart
+Mostra graficamente la durata delle tracce con segmenti proporzionali.
 
 ## 32. File lib/ui/tracce/traccia_form_sheet.dart
+Gestisce l'inserimento e la modifica delle tracce di un album.
 
 ## 33. File lib/ui/album/album_dettaglio_page.dart
+Mostra i dettagli di un album e le tracce associate.
 
 ## 34. File lib/ui/album/album_card.dart (aggiornato)
+Visualizza l'album con supporto per accessibilità e transizione alla copertina.
 
-## 35. File lib/ui/album/album_page.dart (Aggiornato)
+## 35. File lib/ui/album/album_page.dart (aggiornato)
+Mostra gli album e apre la relativa pagina di dettaglio.
+
+## 36. File lib/data/http/api_exceptions.dart
+Definisce le eccezioni per gli errori del server e di rete.
+
+## 37. File lib/data/http/hal.dart
+Estrae liste e link dalle risposte JSON nei formati supportati dal backend.
+
+## 38. File lib/data/http/api_client.dart
+Gestisce le richieste HTTP, la conversione JSON e la traduzione degli errori.
+
+## 39. File lib/data/http/http_artista_repository.dart
+Implementa le operazioni sugli artisti tramite le API HTTP.
+
+## 40. File lib/data/repo.dart (aggiornato)
+Seleziona per ogni tipo di dato il repository in memoria o quello HTTP.
+
+## 41. File lib/ui/shared/non_trovato_page.dart
+Mostra una pagina per risorse o percorsi non trovati e permette di tornare agli artisti.
+
+## 42. File lib/ui/home/scaffold_con_nav.dart
+Fornisce la struttura condivisa con barra superiore e navigazione tra le sezioni.
+
+## 43. File lib/ui/artisti/artisti_page.dart (aggiornato)
+Carica e mostra gli artisti dal repository, con ricerca e navigazione ai dettagli.
+
+## 44. File lib/ui/artisti/artista_dettaglio_page.dart
+Carica e mostra i dettagli di un artista, gestendo errori e risorse non trovate.
+
+## 45. File lib/ui/tracce/tracce_page.dart
+Mostra le tracce del catalogo insieme all'album di appartenenza e alla durata.
+
+## 46. File lib/ui/artisti/artista_form_sheet.dart (aggiornato)
+Gestisce creazione e modifica degli artisti, mostrando anche gli errori di validazione del server.
+
+## 47. File lib/ui/album/album_page.dart (aggiornato)
+Gestisce il caricamento degli album e la navigazione ai dettagli con dati aggiornati.
+
+## 48. File lib/ui/home/home_page.dart (aggiornato)
+Gestisce il contenitore di navigazione e coordina le pagine delle sezioni.
+
+## 49. File lib/main.dart (aggiornato)
+Inizializza i repository e avvia l'app con router e temi configurati.

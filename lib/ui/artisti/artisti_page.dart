@@ -1,89 +1,83 @@
+import 'package:catalogo_musicale_http/data/http/api_exceptions.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/exceptions.dart';
 import '../../data/repo.dart';
 import '../../models/artista.dart';
 import '../shared/dialoghi.dart';
 import '../shared/empty_view.dart';
+import '../shared/error_view.dart';
 import '../shared/feedback.dart';
 import 'artista_form_sheet.dart';
 import 'artista_tile.dart';
 
 class ArtistiPage extends StatefulWidget {
-  const ArtistiPage({
-    super.key,
-    required this.artisti, // dati dal padre (HomePage)
-    required this.onDatiCambiati, // callback per chiedere il ricaricamento
-  });
-
-  final List<Artista> artisti;
-  final Future<void> Function() onDatiCambiati;
+  const ArtistiPage({super.key});
 
   @override
   State<ArtistiPage> createState() => _ArtistiPageState();
 }
 
 class _ArtistiPageState extends State<ArtistiPage> {
-  // Stato LOCALE di interfaccia: resta qui, non serve al padre.
-  final TextEditingController _ricercaCtrl = TextEditingController();
+  /// REGOLA FONDAMENTALE di FutureBuilder: il Future si crea in initState
+  /// (o in un evento), MAI dentro build. Se lo creassimo in build, ogni
+  /// rebuild ripartirebbe da zero -> caricamento infinito.
+  late Future<List<Artista>> _futuro;
+
+  final _ricercaCtrl = TextEditingController();
   String _query = '';
-  bool _vistaGriglia = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _futuro = Repo.artisti.elenca();
+  }
 
   @override
   void dispose() {
-    // Ogni controller alloca risorse: va SEMPRE liberato.
     _ricercaCtrl.dispose();
     super.dispose();
   }
 
-  /// Filtro + ordinamento: si ricalcola a ogni build.
-  /// Con poche decine di elementi è la scelta più semplice e leggibile.
-  List<Artista> get _filtrati {
-    final q = _query.trim().toLowerCase();
-    final lista =
-        widget.artisti.where((a) => a.nome.toLowerCase().contains(q)).toList()
-          ..sort(
-            (a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()),
-          );
-    return lista;
+  void _ricarica() {
+    setState(() => _futuro = Repo.artisti.elenca());
   }
 
   Future<void> _apriForm({Artista? artista}) async {
-    // showModalBottomSheet restituisce il valore passato a Navigator.pop.
-    // Il form fa il salvataggio e chiude con `true` solo se tutto è andato bene.
     final salvato = await showModalBottomSheet<bool>(
       context: context,
-      isScrollControlled: true, // il foglio può occupare quasi tutto lo schermo
-      showDragHandle: true, // la "maniglia" che suggerisce il trascinamento
+      isScrollControlled: true,
+      showDragHandle: true,
       builder: (_) => ArtistaFormSheet(artista: artista),
     );
     if (salvato != true) return;
-
-    await widget.onDatiCambiati();
-    if (!mounted) return; // controllo obbligatorio dopo un await
+    _ricarica();
+    if (!mounted) return;
     mostraSnackBar(
       context,
       artista == null ? 'Artista aggiunto' : 'Artista aggiornato',
     );
   }
 
-  Future<void> _elimina(Artista artista) async {
-    final conferma = await chiediConferma(
+  Future<void> _elimina(Artista a) async {
+    final ok = await chiediConferma(
       context,
-      titolo: 'Eliminare ${artista.nome}?',
-      messaggio:
-          'L’artista verrà rimosso dal catalogo. '
-          'Gli album collegati resteranno senza artista.',
+      titolo: 'Eliminare ${a.nome}?',
+      messaggio: 'L’eliminazione avviene sul server e non è annullabile.',
       etichettaAzione: 'Elimina',
       distruttiva: true,
     );
-    if (!conferma) return;
-
+    if (!ok) return;
     try {
-      // `!` giustificato: un artista arrivato dal repository ha sempre l'id.
-      await Repo.artisti.elimina(artista.id!);
-      await widget.onDatiCambiati();
+      await Repo.artisti.elimina(a.id!);
+      _ricarica();
       if (!mounted) return;
-      mostraSnackBar(context, '${artista.nome} eliminato');
+      mostraSnackBar(context, '${a.nome} eliminato');
+    } on NotFoundException {
+      if (!mounted) return;
+      mostraSnackBar(context, 'L’artista non esiste più: ricarico l’elenco');
+      _ricarica();
     } catch (e) {
       if (!mounted) return;
       mostraSnackBar(context, 'Eliminazione non riuscita: $e');
@@ -92,68 +86,80 @@ class _ArtistiPageState extends State<ArtistiPage> {
 
   @override
   Widget build(BuildContext context) {
-    final filtrati = _filtrati;
-
     return Scaffold(
-      // La AppBar della pagina sta nel padre: qui usiamo una colonna.
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Row(
-              children: [
-                // Expanded: il campo prende tutto lo spazio che avanza.
-                Expanded(
-                  child: TextField(
-                    controller: _ricercaCtrl,
-                    onChanged: (valore) => setState(() => _query = valore),
-                    textInputAction: TextInputAction.search,
-                    decoration: InputDecoration(
-                      labelText: 'Cerca per nome',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _query.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Cancella la ricerca',
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _ricercaCtrl.clear();
-                                setState(() => _query = '');
-                              },
-                            ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: _vistaGriglia
-                      ? 'Mostra come lista'
-                      : 'Mostra come griglia',
-                  isSelected: _vistaGriglia,
-                  icon: const Icon(Icons.list),
-                  selectedIcon: const Icon(Icons.grid_view),
-                  onPressed: () =>
-                      setState(() => _vistaGriglia = !_vistaGriglia),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '${filtrati.length} artisti',
-                style: Theme.of(context).textTheme.labelMedium,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: TextField(
+              controller: _ricercaCtrl,
+              onChanged: (v) => setState(() => _query = v),
+              decoration: const InputDecoration(
+                labelText: 'Cerca per nome',
+                prefixIcon: Icon(Icons.search),
               ),
             ),
           ),
-          // Expanded è OBBLIGATORIO: una lista dentro una Column deve avere
-          // un'altezza definita, altrimenti Flutter non sa quanto spazio darle.
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: widget.onDatiCambiati,
-              child: filtrati.isEmpty ? _vuoto() : _elenco(filtrati),
+            // FutureBuilder ascolta il Future e ricostruisce a ogni cambio di stato.
+            child: FutureBuilder<List<Artista>>(
+              future: _futuro,
+              builder: (contesto, snapshot) {
+                // 1) in attesa
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                // 2) errore
+                if (snapshot.hasError) {
+                  return ErrorView(
+                    messaggio: _messaggioErrore(snapshot.error!),
+                    onRiprova: _ricarica,
+                  );
+                }
+                // 3) dati
+                final tutti = snapshot.data ?? const <Artista>[];
+                final q = _query.trim().toLowerCase();
+                final filtrati =
+                    tutti
+                        .where((a) => a.nome.toLowerCase().contains(q))
+                        .toList()
+                      ..sort((a, b) => a.nome.compareTo(b.nome));
+
+                return RefreshIndicator(
+                  onRefresh: () async => _ricarica(),
+                  child: filtrati.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            const SizedBox(height: 48),
+                            EmptyView(
+                              icona: Icons.person_search,
+                              messaggio: q.isEmpty
+                                  ? 'Nessun artista sul server'
+                                  : 'Nessun artista corrisponde a “$_query”',
+                              azioneLabel: q.isEmpty
+                                  ? 'Aggiungi artista'
+                                  : null,
+                              onAzione: q.isEmpty ? () => _apriForm() : null,
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 96),
+                          itemCount: filtrati.length,
+                          itemBuilder: (_, i) {
+                            final a = filtrati[i];
+                            return ArtistaTile(
+                              artista: a,
+                              // NAVIGAZIONE DICHIARATIVA: passiamo l'id nel path.
+                              onTap: () => context.push('/artisti/${a.id}'),
+                              onModifica: () => _apriForm(artista: a),
+                              onElimina: () => _elimina(a),
+                            );
+                          },
+                        ),
+                );
+              },
             ),
           ),
         ],
@@ -166,110 +172,16 @@ class _ArtistiPageState extends State<ArtistiPage> {
     );
   }
 
-  Widget _vuoto() {
-    // ListView (non Center) così il "pull to refresh" funziona anche da vuoto.
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        const SizedBox(height: 48),
-        EmptyView(
-          icona: Icons.person_search,
-          messaggio: _query.isEmpty
-              ? 'Nessun artista presente'
-              : 'Nessun artista corrisponde a “$_query”',
-          suggerimento: _query.isEmpty
-              ? 'Aggiungi il primo artista del catalogo.'
-              : 'Prova con un altro nome.',
-          azioneLabel: _query.isEmpty ? 'Aggiungi artista' : null,
-          onAzione: _query.isEmpty ? () => _apriForm() : null,
-        ),
-      ],
-    );
-  }
-
-  Widget _elenco(List<Artista> artisti) {
-    if (_vistaGriglia) {
-      return GridView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-        // mainAxisExtent = altezza fissa della cella: molto più robusta di
-        // childAspectRatio quando l'utente ingrandisce il testo.
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisExtent: 168,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemCount: artisti.length,
-        itemBuilder: (contesto, i) => _card(artisti[i]),
-      );
+  /// Traduciamo le eccezioni in messaggi utili (UX writing).
+  String _messaggioErrore(Object errore) {
+    if (errore is NetworkException) return errore.messaggio;
+    if (errore is ApiException) {
+      return 'Il server ha risposto: ${errore.messaggio}';
     }
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 96),
-      itemCount: artisti.length,
-      // builder = costruzione "pigra": si creano solo le righe visibili.
-      itemBuilder: (contesto, i) {
-        final a = artisti[i];
-        return ArtistaTile(
-          artista: a,
-          onTap: () => _dettaglioRapido(a),
-          onModifica: () => _apriForm(artista: a),
-          onElimina: () => _elimina(a),
-        );
-      },
-    );
-  }
-
-  Widget _card(Artista a) {
-    return Card(
-      child: InkWell(
-        onTap: () => _dettaglioRapido(a),
-        // Tap lungo = modifica (bonus del pomeriggio, già implementato).
-        onLongPress: () => _apriForm(artista: a),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(child: Text(a.nome.isEmpty ? '?' : a.nome[0])),
-              const SizedBox(height: 8),
-              Text(
-                a.nome,
-                style: Theme.of(context).textTheme.titleSmall,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const Spacer(), // spinge il resto in basso
-              Text(
-                '${a.nazione}\n${a.annoInizio} · ${a.gruppo.etichetta}',
-                style: Theme.of(context).textTheme.bodySmall,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Il "dettaglio" è un dialogo. Si può evolvere in una rotta.
-  void _dettaglioRapido(Artista a) {
-    showDialog<void>(
-      context: context,
-      builder: (contesto) => AlertDialog(
-        title: Text(a.nome),
-        content: Text(
-          'Nazione: ${a.nazione}\n'
-          'Anno di inizio: ${a.annoInizio}\n'
-          'Tipo: ${a.gruppo.etichetta}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(contesto),
-            child: const Text('Chiudi'),
-          ),
-        ],
-      ),
-    );
+    if (errore is FormatException) {
+      return 'Il server ha risposto in un formato inatteso. '
+          'Controlla il formato della lista (array o HAL).';
+    }
+    return 'Impossibile caricare gli artisti.\n$errore';
   }
 }

@@ -125,7 +125,7 @@ class _HomePageState extends State<HomePage> {
     return IndexedStack(
       index: _tabCorrente,
       children: [
-        ArtistiPage(artisti: _artisti, onDatiCambiati: _caricaTutto),
+        ArtistiPage(),
         AlbumPage(
           album: _album,
           artistiPerId: _artistiPerId,

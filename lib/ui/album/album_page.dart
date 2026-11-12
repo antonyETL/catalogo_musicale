@@ -1,5 +1,5 @@
-import 'package:catalogo_musicale_http/ui/album/album_dettaglio_page.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/repo.dart';
 import '../../models/album.dart';
@@ -13,47 +13,103 @@ import 'album_form_sheet.dart';
 class AlbumPage extends StatefulWidget {
   const AlbumPage({
     super.key,
-    required this.album,
-    required this.artistiPerId,
-    required this.onDatiCambiati,
+    this.album = const [],
+    this.artistiPerId = const {},
+    this.onDatiCambiati,
   });
 
   final List<Album> album;
   final Map<int, Artista> artistiPerId;
-  final Future<void> Function() onDatiCambiati;
+  final Future<void> Function()? onDatiCambiati;
 
   @override
   State<AlbumPage> createState() => _AlbumPageState();
 }
 
 class _AlbumPageState extends State<AlbumPage> {
+  List<Album> _albumLocale = const [];
+  Map<int, Artista> _artistiPerIdLocale = const {};
   String? _genereSelezionato; // null = tutti i generi
+
+  List<Album> get _album => widget.album.isEmpty ? _albumLocale : widget.album;
+  Map<int, Artista> get _artistiPerId =>
+      widget.artistiPerId.isEmpty ? _artistiPerIdLocale : widget.artistiPerId;
+
+  @override
+  void initState() {
+    super.initState();
+    _sincronizzaDati();
+  }
+
+  @override
+  void didUpdateWidget(covariant AlbumPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.album != oldWidget.album ||
+        widget.artistiPerId != oldWidget.artistiPerId) {
+      _albumLocale = widget.album;
+      _artistiPerIdLocale = widget.artistiPerId;
+    }
+    if (_genereSelezionato != null && !_generi.contains(_genereSelezionato)) {
+      _genereSelezionato = null;
+    }
+  }
+
+  Future<void> _sincronizzaDati() async {
+    if (widget.onDatiCambiati != null) {
+      if (!mounted) return;
+      setState(() {
+        _albumLocale = widget.album;
+        _artistiPerIdLocale = widget.artistiPerId;
+      });
+      return;
+    }
+
+    try {
+      final artisti = await Repo.artisti.elenca();
+      final album = await Repo.album.elenca();
+      if (!mounted) return;
+      setState(() {
+        _albumLocale = album;
+        _artistiPerIdLocale = {
+          for (final a in artisti)
+            if (a.id != null) a.id!: a,
+        };
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _albumLocale = const [];
+        _artistiPerIdLocale = const {};
+      });
+    }
+  }
+
+  Future<void> _ricaricaDati() async {
+    if (widget.onDatiCambiati != null) {
+      await widget.onDatiCambiati!();
+      if (!mounted) return;
+      setState(() {
+        _albumLocale = widget.album;
+        _artistiPerIdLocale = widget.artistiPerId;
+      });
+      return;
+    }
+    await _sincronizzaDati();
+  }
 
   /// Generi presenti, senza duplicati, ordinati.
   /// Il Set elimina i doppioni; toList + sort li ordina alfabeticamente.
   List<String> get _generi {
-    final insieme = widget.album
+    final insieme = _album
         .map((a) => a.genere)
         .where((g) => g.trim().isNotEmpty)
         .toSet();
     return insieme.toList()..sort();
   }
 
-  /// didUpdateWidget: chiamato quando il PADRE passa dati nuovi.
-  /// Caso reale: elimino l'ultimo album "Jazz" e il filtro Jazz resta selezionato
-  /// mostrando una lista vuota senza perché. Qui lo resettiamo.
-  @override
-  void didUpdateWidget(AlbumPage vecchio) {
-    super.didUpdateWidget(vecchio);
-    if (_genereSelezionato != null && !_generi.contains(_genereSelezionato)) {
-      // Attenzione: qui NON si chiama setState (siamo già in un rebuild).
-      _genereSelezionato = null;
-    }
-  }
-
   List<Album> get _filtrati {
     final lista =
-        widget.album
+        _album
             .where(
               (a) =>
                   _genereSelezionato == null || a.genere == _genereSelezionato,
@@ -66,10 +122,10 @@ class _AlbumPageState extends State<AlbumPage> {
   }
 
   String _nomeArtista(int idArtista) =>
-      widget.artistiPerId[idArtista]?.nome ?? 'Artista sconosciuto';
+      _artistiPerId[idArtista]?.nome ?? 'Artista sconosciuto';
 
   Future<void> _apriForm({Album? album}) async {
-    if (widget.artistiPerId.isEmpty) {
+    if (_artistiPerId.isEmpty) {
       mostraSnackBar(context, 'Prima aggiungi almeno un artista');
       return;
     }
@@ -79,12 +135,12 @@ class _AlbumPageState extends State<AlbumPage> {
       showDragHandle: true,
       builder: (_) => AlbumFormSheet(
         album: album,
-        artisti: widget.artistiPerId.values.toList()
+        artisti: _artistiPerId.values.toList()
           ..sort((a, b) => a.nome.compareTo(b.nome)),
       ),
     );
     if (salvato != true) return;
-    await widget.onDatiCambiati();
+    await _ricaricaDati();
     if (!mounted) return;
     mostraSnackBar(
       context,
@@ -103,7 +159,7 @@ class _AlbumPageState extends State<AlbumPage> {
     if (!ok) return;
     try {
       await Repo.album.elimina(album.id!);
-      await widget.onDatiCambiati();
+      await _ricaricaDati();
       if (!mounted) return;
       mostraSnackBar(context, 'Album eliminato');
     } catch (e) {
@@ -150,7 +206,7 @@ class _AlbumPageState extends State<AlbumPage> {
             ),
           Expanded(
             child: RefreshIndicator(
-              onRefresh: widget.onDatiCambiati,
+              onRefresh: _ricaricaDati,
               child: filtrati.isEmpty
                   ? ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -176,13 +232,10 @@ class _AlbumPageState extends State<AlbumPage> {
                           album: a,
                           nomeArtista: _nomeArtista(a.idArtista),
                           onTap: () async {
-                            await Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) =>
-                                    AlbumDettaglioPage(idAlbum: a.id!),
-                              ),
-                            );
-                            await widget.onDatiCambiati(); // tornando indietro, la lista è aggiornata
+                            await context.push(
+                              '/album/${a.id}',
+                            ); // rotta dichiarativa
+                            await _ricaricaDati();
                           },
                           onModifica: () => _apriForm(album: a),
                           onElimina: () => _elimina(a),

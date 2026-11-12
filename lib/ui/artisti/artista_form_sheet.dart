@@ -1,3 +1,4 @@
+import 'package:catalogo_musicale_http/core/exceptions.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/repo.dart';
@@ -29,6 +30,12 @@ class _ArtistaFormSheetState extends State<ArtistaFormSheet> {
   bool _salvataggio = false;
 
   bool get _inModifica => widget.artista != null;
+
+  /// Nuovo stato
+  /// Errori arrivati dal SERVER (400): campo -> messaggio.
+  /// Si sommano ai validator locali, ma hanno la precedenza perché il server
+  /// è l'autorità finale.
+  Map<String, String> _erroriServer = {};
 
   @override
   void initState() {
@@ -75,6 +82,13 @@ class _ArtistaFormSheetState extends State<ArtistaFormSheet> {
       }
       if (!mounted) return;
       Navigator.pop(context, true); // chiudo il foglio e comunico il successo
+    } on ValidationException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _salvataggio = false;
+        _erroriServer = e.erroriPerCampo;
+      });
+      mostraSnackBar(context, e.messaggioGenerale);
     } catch (e) {
       if (!mounted) return;
       setState(() => _salvataggio = false);
@@ -124,11 +138,19 @@ class _ArtistaFormSheetState extends State<ArtistaFormSheet> {
               TextFormField(
                 controller: _annoCtrl,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Anno di inizio *',
                   helperText: 'Dal 1900 al 9999',
+                  // Se il server ha contestato questo campo, mostriamo il SUO messaggio.
+                  errorText: _erroriServer['annoInizio'],
                 ),
                 validator: validaAnnoInizio,
+                onChanged: (_) {
+                  // Appena l'utente corregge, l'errore del server non è più attuale.
+                  if (_erroriServer.containsKey('annoInizio')) {
+                    setState(() => _erroriServer.remove('annoInizio'));
+                  }
+                },
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<Gruppo>(

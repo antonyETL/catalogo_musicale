@@ -1,21 +1,39 @@
+import 'http/api_client.dart';
+import 'http/http_artista_repository.dart';
 import 'in_memory_repositories.dart';
 import 'repositories.dart';
 
-/// "Contenitore delle dipendenze" fatto a mano (dependency injection a mano).
-///
-/// Classe che permette di concentrarsi su widget e stato.
-/// Successivamente si userà RepositoryProvider/BlocProvider.
-class Repo {
-  Repo._(); // costruttore privato: nessuno deve creare istanze di Repo
+/// Da dove arrivano i dati di una singola entità.
+enum FonteDati { memoria, rete }
 
-  /// `late final`: la assegno una volta in main(), prima di runApp().
+class Repo {
+  Repo._();
+
   static late final ArtistaRepository artisti;
   static late final AlbumRepository album;
   static late final TracciaRepository tracce;
+  static ApiClient? _api;
 
-  static void init() {
-    artisti = InMemoryArtistaRepository();
-    album = InMemoryAlbumRepository();
-    tracce = InMemoryTracciaRepository();
+  /// Al mattino del Giorno 4 solo gli ARTISTI vanno in rete.
+  /// Nel pomeriggio gli studenti porteranno album e tracce su `rete`:
+  /// basterà cambiare due parole qui (e scrivere i due repository).
+  static void init({
+    FonteDati fonteArtisti = FonteDati.rete,
+    FonteDati fonteAlbum = FonteDati.memoria,
+    FonteDati fonteTracce = FonteDati.memoria,
+  }) {
+    _api = ApiClient();
+
+    artisti = fonteArtisti == FonteDati.rete
+        ? HttpArtistaRepository(_api!)
+        : InMemoryArtistaRepository();
+
+    album = fonteAlbum == FonteDati.rete
+        ? InMemoryAlbumRepository() // TODO pomeriggio: HttpAlbumRepository(_api!)
+        : InMemoryAlbumRepository();
+
+    tracce = fonteTracce == FonteDati.rete
+        ? InMemoryTracciaRepository() // TODO pomeriggio: HttpTracciaRepository(_api!)
+        : InMemoryTracciaRepository();
   }
 }
